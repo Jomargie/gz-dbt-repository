@@ -3,5 +3,48 @@ sources:
   - name: gz_raw_data
     tables:
       - name: raw_gz_sales
+        identifier: raw_gz_sales
+        description: les ventes de Greenweez
+        loaded_at_field: CAST(date_date AS TIMESTAMP)
+        freshness: 
+          warn_after:
+            count: 90
+            period: day
+        
+        columns:
+          - name: date_date
+            description: date à laquelle à été faite la commande
+          - name: order_id
+            description: identifiant de la commande
+          - name: products_id
+            description: identifiant du produit commandé
+          - name: revenue
+            description: prix total de la commande
+          - name: quantity
+            description: nombre de produit commandé dans la commande
       - name: raw_gz_product
+        identifier: raw_gz_product
+        description: liste des produits vendus par Greenweez et leur prix
+        columns:
+          - name: products_id
+            description: identifiant du produit
+            tests:
+              - unique
+              - not_null
+          - name: purchase_price
+            description: prix d'achat du produit
       - name: raw_gz_ship
+        identifier: raw_gz_ship
+        description: description des frais d'envoi
+        columns:
+          - name: orders_id
+            description: identifiant de la commande
+            tests:
+              - unique
+              - not_null
+          - name: shipping_fee
+            description: frais d'envoi payés par le client
+          - name: logcost
+            description: frais de logistique
+          - name: ship_cost
+            description: frais d'envoi payés par Greenweez
