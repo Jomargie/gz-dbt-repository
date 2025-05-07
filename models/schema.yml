@@ -1,50 +1,156 @@
 version: 2
+
 sources:
-  - name: gz_raw_data
-    tables:
-      - name: raw_gz_sales
-        identifier: raw_gz_sales
-        description: les ventes de Greenweez
-        loaded_at_field: CAST(date_date AS TIMESTAMP)
-        freshness: 
-          warn_after:
-            count: 90
-            period: day
-        
-        columns:
-          - name: date_date
-            description: date à laquelle à été faite la commande
-          - name: order_id
-            description: identifiant de la commande
-          - name: products_id
-            description: identifiant du produit commandé
-          - name: revenue
-            description: prix total de la commande
-          - name: quantity
-            description: nombre de produit commandé dans la commande
-      - name: raw_gz_product
-        identifier: raw_gz_product
-        description: liste des produits vendus par Greenweez et leur prix
-        columns:
-          - name: products_id
-            description: identifiant du produit
-            tests:
-              - unique
-              - not_null
-          - name: purchase_price
-            description: prix d'achat du produit
-      - name: raw_gz_ship
-        identifier: raw_gz_ship
-        description: description des frais d'envoi
-        columns:
-          - name: orders_id
-            description: identifiant de la commande
-            tests:
-              - unique
-              - not_null
-          - name: shipping_fee
-            description: frais d'envoi payés par le client
-          - name: logcost
-            description: frais de logistique
-          - name: ship_cost
-            description: frais d'envoi payés par Greenweez
+   - name: raw
+     schema: gz_raw_data
+     tables:
+       - name: sales
+         identifier: raw_gz_sales
+         description: sales of Greenweez / we have on row per product_id found in each orders_id
+         loaded_at_field: "CAST(date_date AS TIMESTAMP)"
+         freshness:
+           warn_after: {count: 90, period: day}
+         columns:
+           - name: date_date
+             description: date of purchase
+           - name: orders_id
+             description: foreign key to ship
+           - name: pdt_id
+             description: foreign key to product
+           - name: revenue
+             description: the amount paid by the customer to purchase the product. revenue = quantity * selling_price
+           - name: quanitity
+             description: the quantity of products purchased for a given order
+         tests:
+           - unique:
+               column_name: "(orders_id || '-' || pdt_id)"
+
+       - name: product
+         identifier: raw_gz_product
+         description: produst of Greenweez
+         columns:
+           - name: products_id
+             description: Primary key
+             tests:
+               - unique
+               - not_null
+           - name: purchase_price
+             description: the purchase price of the product
+
+       - name: ship
+         identifier: raw_gz_ship
+         description: shipping data for Greenweez orders
+         columns:
+           - name: orders_id
+             description: Primary key
+             tests:
+               - unique
+               - not_null
+           - name: shipping_fee
+             description: the price the customer pays for shipping
+           - name: log_cost
+             description: the cost of preparing the parcel in the distribution centre/warehouse
+           - name: ship_cost
+             description: shipping cost paid by Greenweez to the carrier/logistics provider
+
+models:
+   - name: int_orders_margin
+     description: margin calculation per order
+     columns:
+       - name: orders_id
+         description: primary key
+         tests:
+           - unique
+           - not_null
+       - name: margin
+         description: margin = revenue - purchase_cost
+         tests:
+           - not_null
+       - name: Purchase_cost
+         description: purchase_cost = quantity * purchase_price
+         tests:
+           - not_null
+       - name: date_date
+         description: date of the order
+         tests:
+           - not_null
+       - name: revenue
+         description: sum of revenue per order
+         tests:
+           - not_null
+       - name: quantity
+         description: sum of quantity per order
+         tests:
+           - not_null
+
+   - name: int_sales_margin
+     description: margin calculation per order line / product sales
+     columns:
+       - name: orders_id
+         description: orders key
+         tests:
+           - not_null
+       - name: products_id
+         description: products key
+         tests:
+           - not_null
+       - name: margin
+         description: margin = revenue - purchase_cost
+         tests:
+           - not_null
+       - name: Purchase_cost
+         description: purchase_cost = quantity * purchase_price
+         tests:
+           - not_null
+       - name: date_date
+         description: date of the order
+         tests:
+           - not_null
+       - name: revenue
+         description: sum of revenue per order
+         tests:
+           - not_null
+       - name: quantity
+         description: sum of quantity per order
+         tests:
+           - not_null
+     tests:
+       - unique:
+           column_name: "(orders_id || '-' || products_id)"
+
+   - name: int_orders_operational
+     description: operational margin calculation per order
+     columns:
+       - name: orders_id
+         description: primary key
+         tests:
+           - unique
+           - not_null
+       - name: date_date
+         description: date of the order
+         tests:
+           - not_null
+       - name: operational_margin
+         description: operational_margin = margin + shipping_fee - logcost - ship_cost
+       - name: quantity
+         description: sum of quantity per order
+         tests:
+           - not_null
+       - name: revenue
+         description: sum of revenue per order
+         tests:
+           - not_null
+       - name: purchase_cost
+         description: purchase_cost = quantity * purchase_price
+         tests:
+           - not_null
+       - name: margin
+         description: margin = revenue - purchase_cost
+         tests:
+           - not_null
+       - name: shipping_fee
+         description: the price the customer pays for shipping
+       - name: logcost
+         description: the cost of preparing the parcel in the distribution centre/warehouse
+       - name: ship_cost
+         description: shipping cost paid by Greenweez to the carrier/logistics provider
